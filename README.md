@@ -7,4 +7,3 @@ secret key and press Yubikey on the password field on the authentication form.
 
 Follow this blog post for more information:
 TODO: add post link
-
