@@ -1,14 +1,14 @@
 import re, yubico_client, os, base64
 from typing import Tuple
+from secret import get_secret_manager_secret
 
-CLIENT_ID = os.environ['CLIENT_ID']
-SECRET_KEY = os.environ['SECRET_KEY'] # In reality, this should be stored in AWS Secrets Manager!!!
-client = yubico_client.Yubico(CLIENT_ID, SECRET_KEY)
+secret = get_secret_manager_secret('yubicloud_secret')
+client = yubico_client.Yubico(secret['CLIENT_ID'], secret['SECRET_KEY'])
 
-def validate_otp(otp, client_id, secret_key) -> bool:
+def validate_otp(otp) -> bool:
   """Validate the OTP key using YubiCloud API"""
   try:
-    response = client.Yubico(client_id, secret_key).verify(otp)
+    response = client.verify(otp)
     return True if response is True else False # Normalize in case it is None or anything unexpected
   except Exception as e:
     print(f"Error validating OTP: {e}")
@@ -25,7 +25,7 @@ def authenticate(token) -> Tuple[str, bool]:
   if not re.match(r'^[cbdefghijklnrtuv]{44}$', otp):
     raise Exception("Invalid OTP format")
   
-  return otp[:12], validate_otp(otp, CLIENT_ID, SECRET_KEY)
+  return otp[:12], validate_otp(otp)
 
 def construct_policy(username, event):
   _, _, _, region, accountId, apiGwPath = event['methodArn'].split(':')
@@ -52,5 +52,5 @@ def lambda_handler(event, context):
       return policy
   except Exception as e:
     print(f"Error: {e}")
-    return "Unauthorized"
-  return "Unauthorized"
+    raise Exception("Unauthorized")
+  raise Exception("Unauthorized")
