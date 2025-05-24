@@ -6,7 +6,8 @@ resource "aws_api_gateway_method" "get" {
   rest_api_id   = aws_api_gateway_rest_api.api.id
   resource_id   = aws_api_gateway_rest_api.api.root_resource_id
   http_method   = "GET"
-  authorization = "NONE"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.otp_auth.id
 }
 
 resource "aws_api_gateway_stage" "prod" {
@@ -24,6 +25,6 @@ resource "aws_api_gateway_deployment" "prod" {
   depends_on = [aws_api_gateway_integration.static-site]
 
   variables = {
-    "deployed_version" = "8" # Change this to force deployment, otherwise you have to do it manually
+    "deployed_version" = "10" # Change this to force deployment, otherwise you have to do it manually
   }
 }
