@@ -42,6 +42,6 @@ resource "aws_api_gateway_gateway_response" "unauthorized" {
   }
 
   response_templates = {
-    "text/html"        = "<html><body><h1>Unauthorized</h1></body></html>"
+    "text/html" = "<html><body><h1>Unauthorized</h1></body></html>"
   }
 }

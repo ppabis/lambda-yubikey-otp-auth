@@ -37,8 +37,8 @@ resource "aws_iam_role_policy" "yubicloud_secret_access" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "secretsmanager:GetSecretValue"
-      Effect = "Allow"
+      Action   = "secretsmanager:GetSecretValue"
+      Effect   = "Allow"
       Resource = aws_secretsmanager_secret.yubicloud_secret.arn
     }]
   })
