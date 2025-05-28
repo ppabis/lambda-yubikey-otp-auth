@@ -27,7 +27,7 @@ class OTP:
         self.checksum = self.decrypted[14:16]
         self.combined_counter = self.usage_counter * 1000 + self.session_counter
     
-    def validate(self, expected_private: bytes):
+    def validate(self, expected_private: bytes, last_counter: int):
         """
         Source: https://github.com/Yubico/python-pyhsm/blob/master/pyhsm/soft_hsm.py#L132
         """
@@ -40,7 +40,9 @@ class OTP:
                 if j:
                     m_crc ^= 0x8408
         
-        return m_crc == 0xf0b8 and expected_private == self.private_id
+        return m_crc == 0xf0b8 \
+          and expected_private == self.private_id \
+          and self.combined_counter > last_counter
     
     def __str__(self):
         if self.decrypted is None:
