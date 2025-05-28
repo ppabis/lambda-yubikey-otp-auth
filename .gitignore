@@ -4,3 +4,4 @@ auth/**/*
 !auth/requirements.txt
 !auth/*.py
 *.zip
+.venv/
