@@ -2,5 +2,5 @@
 terraform.*
 auth/**/*
 !auth/requirements.txt
-!auth/lambda.py
+!auth/*.py
 *.zip
