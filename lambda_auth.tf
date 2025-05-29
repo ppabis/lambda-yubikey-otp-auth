@@ -31,6 +31,11 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+resource "aws_iam_role_policy_attachment" "lambda_otp_auth_policy" {
+  role       = aws_iam_role.lambda_otp_auth_role.name
+  policy_arn = aws_iam_policy.lambda_otp_auth_policy.arn
+}
+
 resource "aws_lambda_function" "otp_auth" {
   function_name    = "otp_auth"
   role             = aws_iam_role.lambda_otp_auth_role.arn
