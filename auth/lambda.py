@@ -1,4 +1,4 @@
-import base64, json
+import base64, json, boto3
 from typing import Tuple
 from process_otp import OTP
 
