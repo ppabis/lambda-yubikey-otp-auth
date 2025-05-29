@@ -1,7 +1,18 @@
 resource "null_resource" "pip_install" {
   provisioner "local-exec" {
-    command = "docker run --rm -v ${path.module}/auth:/build amazonlinux:2023 /bin/sh -c 'yum -y install python3-pip; cd /build; pip install -t . -r requirements.txt'"
+    command = <<-EOF
+    docker run --rm \
+     -v ${path.module}/auth:/build \
+     amazonlinux:2023 \
+     /bin/sh -c 'yum -y install python3-pip; \
+     cd /build; \
+     pip install -t . -r requirements.txt'
+    EOF
     when    = create
+  }
+  provisioner "local-exec" {
+    command = "sh -c 'find ${path.module}/auth -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +'"
+    when    = destroy
   }
 }
 
