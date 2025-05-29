@@ -1,5 +1,5 @@
 import yubico_client.modhex as modhex
-from Crypto.Cipher import AES
+from Cryptodome.Cipher import AES
 import re
 
 class OTP:
