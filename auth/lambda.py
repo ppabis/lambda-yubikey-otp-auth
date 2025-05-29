@@ -1,4 +1,4 @@
-import re, os, base64
+import base64, json
 from typing import Tuple
 from process_otp import OTP
 
@@ -25,25 +25,32 @@ def construct_policy(username, event):
 
 def get_token_from_event(event):
   token = event['authorizationToken']
-    if not token:
-      raise Exception("Missing Authorization header")
-    # From "Basic base64(username:password)", get only "password"
-    return base64.b64decode(token.split(' ')[1]).decode('utf-8').split(':')[1]
+  if not token:
+    raise Exception("Missing Authorization header")
+  # From "Basic base64(username:password)", get only "password"
+  return base64.b64decode(token.split(' ')[1]).decode('utf-8').split(':')[1]
 
-def get_user_from_database(otp: OTP):
-  item = table.get_item(Item={"public_id": otp.public_id})
-  if not item:
+def get_user_from_database(otp: OTP) -> Tuple[bytes, bytes, int]:
+  """
+  Gets user based on OTP and if they exist, returns their private ID, key, and usage counter.
+  """
+  item = table.get_item(Key={"public_id": otp.public_id})
+  if not 'Item' in item:
     raise Exception(f"User {otp.public_id} not found!")
-  response = secretsmanager.get_secret_value(SecretId=item['secret_arn'])
+  response = secretsmanager.get_secret_value(SecretId=item['Item']['secret_arn'])
   secret = json.loads(response['SecretString'])
   private_id = bytes.fromhex(secret['private_id'])
-  key = bytes.fromhex(secret['private_id'])
+  key = bytes.fromhex(secret['key'])
   if not key or not private_id:
     raise Exception(f"No secret for user {otp.public_id}")
-  return private_id, key, item['usage_counter']
+  return private_id, key, item['Item']['usage_counter']
 
 def update_usage_counter(otp: OTP):
-  table.update_item(Item={"public_id": public_id}, Values={"usage_counter": otp.combined_counter})
+  table.update_item(
+    Key={"public_id": otp.public_id},
+    UpdateExpression="SET usage_counter = :c",
+    ExpressionAttributeValues={':c': otp.combined_counter}
+  )
 
 def lambda_handler(event, context):
   try:
