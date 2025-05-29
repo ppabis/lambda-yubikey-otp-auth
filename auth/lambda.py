@@ -1,31 +1,10 @@
-import re, yubico_client, os, base64
+import re, os, base64
 from typing import Tuple
-from secret import get_secret_manager_secret
+from process_otp import OTP
 
-secret = get_secret_manager_secret('yubicloud_secret')
-client = yubico_client.Yubico(secret['CLIENT_ID'], secret['SECRET_KEY'])
-
-def validate_otp(otp) -> bool:
-  """Validate the OTP key using YubiCloud API"""
-  try:
-    response = client.verify(otp)
-    return True if response is True else False # Normalize in case it is None or anything unexpected
-  except Exception as e:
-    print(f"Error validating OTP: {e}")
-    return False
-
-def authenticate(token) -> Tuple[str, bool]:
-  """Authenticate the user using the OTP key. Returns tuple of public ID and if OTP is valid"""
-  if not token:
-    raise Exception("Missing Authorization header")
-  
-  # From "Basic base64(username:password)", get only "password"
-  otp = base64.b64decode(token.split(' ')[1]).decode('utf-8').split(':')[1]
-  
-  if not re.match(r'^[cbdefghijklnrtuv]{44}$', otp):
-    raise Exception("Invalid OTP format")
-  
-  return otp[:12], validate_otp(otp)
+dynamodb = boto3.resource("dynamodb")
+secretsmanager = boto3.client("secretsmanager")
+table = dynamodb.Table("yubikey_otp_auth")
 
 def construct_policy(username, event):
   _, _, _, region, accountId, apiGwPath = event['methodArn'].split(':')
@@ -44,11 +23,37 @@ def construct_policy(username, event):
     }
   }
 
+def get_token_from_event(event):
+  token = event['authorizationToken']
+    if not token:
+      raise Exception("Missing Authorization header")
+    # From "Basic base64(username:password)", get only "password"
+    return base64.b64decode(token.split(' ')[1]).decode('utf-8').split(':')[1]
+
+def get_user_from_database(otp: OTP):
+  item = table.get_item(Item={"public_id": otp.public_id})
+  if not item:
+    raise Exception(f"User {otp.public_id} not found!")
+  response = secretsmanager.get_secret_value(SecretId=item['secret_arn'])
+  secret = json.loads(response['SecretString'])
+  private_id = bytes.fromhex(secret['private_id'])
+  key = bytes.fromhex(secret['private_id'])
+  if not key or not private_id:
+    raise Exception(f"No secret for user {otp.public_id}")
+  return private_id, key, item['usage_counter']
+
+def update_usage_counter(otp: OTP):
+  table.update_item(Item={"public_id": public_id}, Values={"usage_counter": otp.combined_counter})
+
 def lambda_handler(event, context):
   try:
-    username, valid = authenticate(event['authorizationToken'])
-    if valid:
-      policy = construct_policy(username, event)
+    token = get_token_from_event(event)
+    otp = OTP(token)
+    private_id, key, usage_counter = get_user_from_database(otp)
+    otp.decrypt(key)
+    if otp.validate(private_id, usage_counter):
+      policy = construct_policy(otp.public_id, event)
+      update_usage_counter(otp)
       return policy
   except Exception as e:
     print(f"Error: {e}")
