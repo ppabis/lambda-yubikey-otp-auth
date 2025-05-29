@@ -27,7 +27,7 @@ class OTP:
         self.checksum = self.decrypted[14:16]
         self.combined_counter = self.usage_counter * 1000 + self.session_counter
     
-    def validate(self, expected_private: bytes, last_counter: int):
+    def validate(self, expected_private: bytes, last_counter: int) -> bool:
         """
         Source: https://github.com/Yubico/python-pyhsm/blob/master/pyhsm/soft_hsm.py#L132
         """
