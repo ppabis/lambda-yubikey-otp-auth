@@ -1,8 +1,11 @@
 import yubico_client.modhex as modhex
 from Crypto.Cipher import AES
+import re
 
 class OTP:
     def __init__(self, otp: str):
+        if not re.match(r'^[cbdefghijklnrtuv]{44}$', otp):
+            raise Exception("Invalid OTP format")
         self.source_otp = otp
         self.public_id = otp[:12]
         m_private_part = otp[12:]
