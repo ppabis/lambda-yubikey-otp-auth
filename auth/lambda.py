@@ -6,7 +6,7 @@ dynamodb = boto3.resource("dynamodb")
 secretsmanager = boto3.client("secretsmanager")
 table = dynamodb.Table("yubikey_otp_auth")
 
-def construct_policy(username, event):
+def construct_policy(username, event, name = None):
   _, _, _, region, accountId, apiGwPath = event['methodArn'].split(':')
   restApiId, stage = apiGwPath.split('/')[:2]
   return {
@@ -20,6 +20,9 @@ def construct_policy(username, event):
           'Resource': [ f"arn:aws:execute-api:{region}:{accountId}:{restApiId}/{stage}/GET/*" ]
         }
       ]
+    },
+    'context' : {
+      'name' : name if name else username
     }
   }
 
@@ -30,7 +33,7 @@ def get_token_from_event(event):
   # From "Basic base64(username:password)", get only "password"
   return base64.b64decode(token.split(' ')[1]).decode('utf-8').split(':')[1]
 
-def get_user_from_database(otp: OTP) -> Tuple[bytes, bytes, int]:
+def get_user_from_database(otp: OTP) -> Tuple[bytes, bytes, int, str]:
   """
   Gets user based on OTP and if they exist, returns their private ID, key, and usage counter.
   """
@@ -43,7 +46,8 @@ def get_user_from_database(otp: OTP) -> Tuple[bytes, bytes, int]:
   key = bytes.fromhex(secret['key'])
   if not key or not private_id:
     raise Exception(f"No secret for user {otp.public_id}")
-  return private_id, key, item['Item']['usage_counter']
+  name = item['Item']['name'] if 'name' in item['Item'] else f"Anonymous {otp.public_id}"
+  return private_id, key, item['Item']['usage_counter'], name
 
 def update_usage_counter(otp: OTP):
   table.update_item(
@@ -56,10 +60,10 @@ def lambda_handler(event, context):
   try:
     token = get_token_from_event(event)
     otp = OTP(token)
-    private_id, key, usage_counter = get_user_from_database(otp)
+    private_id, key, usage_counter, name = get_user_from_database(otp)
     otp.decrypt(key)
     if otp.validate(private_id, usage_counter):
-      policy = construct_policy(otp.public_id, event)
+      policy = construct_policy(otp.public_id, event, name)
       update_usage_counter(otp)
       return policy
   except Exception as e:
