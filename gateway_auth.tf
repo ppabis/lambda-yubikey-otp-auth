@@ -25,11 +25,12 @@ resource "aws_iam_role_policy" "api_gateway_otp_auth_policy" {
 }
 
 resource "aws_api_gateway_authorizer" "otp_auth" {
-  name                   = "otp_auth"
-  rest_api_id            = aws_api_gateway_rest_api.api.id
-  type                   = "TOKEN"
-  authorizer_uri         = aws_lambda_function.otp_auth.invoke_arn
-  authorizer_credentials = aws_iam_role.api_gateway_otp_auth_role.arn
+  name                             = "otp_auth"
+  rest_api_id                      = aws_api_gateway_rest_api.api.id
+  type                             = "TOKEN"
+  authorizer_uri                   = aws_lambda_function.otp_auth.invoke_arn
+  authorizer_credentials           = aws_iam_role.api_gateway_otp_auth_role.arn
+  authorizer_result_ttl_in_seconds = 60
 }
 
 resource "aws_api_gateway_gateway_response" "unauthorized" {
