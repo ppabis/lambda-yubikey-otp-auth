@@ -10,10 +10,12 @@ resource "null_resource" "pip_install" {
     EOF
     when    = create
   }
-  provisioner "local-exec" {
-    command = "sh -c 'find ${path.module}/auth -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +'"
-    when    = destroy
-  }
+  # I disabled the following command because it looks scary but it did not wipe my drive 😅. If you feel confident,
+  # use it. If not, delete all directories inside `auth` by yourself.
+  #provisioner "local-exec" {
+  #  command = "sh -c 'find ${path.module}/auth -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +'"
+  #  when    = destroy
+  #}
 }
 
 resource "archive_file" "authorizer_lambda" {
